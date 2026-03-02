@@ -1,0 +1,15 @@
+{
+  "name": "proyecto-9-scraping",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "scraper": "node scraper.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^24.37.5"
+  }
+}
