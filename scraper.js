@@ -1,8 +1,17 @@
 const puppeteer = require('puppeteer')
-
+require('dotenv').config()
+const mongoose = require('mongoose')
 const fs = require('fs')
 
+const bookSchema = new mongoose.Schema({
+  title: String,
+  price: String,
+  image: String
+})
+const Book = mongoose.model('Book', bookSchema)
+
 const scrape = async () => {
+  await mongoose.connect(process.env.MONGODB_URI)
   const browser = await puppeteer.launch()
   const page = await browser.newPage()
   await page.goto('https://books.toscrape.com/index.html')
@@ -37,6 +46,7 @@ const scrape = async () => {
   }
 
   fs.writeFileSync('products.json', JSON.stringify(allBooks, null, 2))
+  await Book.insertMany(allBooks)
   browser.close()
 }
 
