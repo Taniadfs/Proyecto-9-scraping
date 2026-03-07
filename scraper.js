@@ -1,5 +1,7 @@
 const puppeteer = require('puppeteer')
 
+const fs = require('fs')
+
 const scrape = async () => {
   const browser = await puppeteer.launch()
   const page = await browser.newPage()
@@ -28,10 +30,14 @@ const scrape = async () => {
     nextButton = await page.$('li.next a')
     if (nextButton) {
       await nextButton.click()
+      await page.waitForNavigation()
     }
 
     allBooks.push(...books)
   }
+
+  fs.writeFileSync('products.json', JSON.stringify(allBooks, null, 2))
+  browser.close()
 }
 
 scrape()
