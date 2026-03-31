@@ -1,53 +1,56 @@
 const puppeteer = require('puppeteer')
 require('dotenv').config()
-const mongoose = require('mongoose')
+const { connectDB } = require('./src/config/db')
 const fs = require('fs')
-
-const bookSchema = new mongoose.Schema({
-  title: String,
-  price: String,
-  image: String
-})
-const Book = mongoose.model('Book', bookSchema)
+const Book = require('./src/models/Book')
 
 const scrape = async () => {
-  await mongoose.connect(process.env.MONGODB_URI)
-  const browser = await puppeteer.launch()
-  const page = await browser.newPage()
-  await page.goto('https://books.toscrape.com/index.html')
+  let browser
   try {
-    await page.waitForSelector('.modal-button', { timeout: 3000 })
-    await page.click('.modal-button')
-  } catch (e) {
-    console.log('No se encontró el botón de la modal')
-  }
-
-  const allBooks = []
-  let nextButton = true
-
-  while (nextButton) {
-    const books = await page.evaluate(() => {
-      const bookElements = document.querySelectorAll('article.product_pod')
-      return Array.from(bookElements).map((book) => {
-        const title = book.querySelector('h3 a').getAttribute('title')
-        const price = book.querySelector('.price_color').textContent
-        const image = book.querySelector('img').getAttribute('src')
-        return { title, price, image }
-      })
-    })
-
-    nextButton = await page.$('li.next a')
-    if (nextButton) {
-      await nextButton.click()
-      await page.waitForNavigation()
+    await connectDB()
+    browser = await puppeteer.launch()
+    const page = await browser.newPage()
+    await page.goto('https://books.toscrape.com/index.html')
+    try {
+      await page.waitForSelector('.modal-button', { timeout: 3000 })
+      await page.click('.modal-button')
+    } catch (e) {
+      console.log('No se encontró el botón de la modal')
     }
 
-    allBooks.push(...books)
-  }
+    const allBooks = []
+    let nextButton = true
 
-  fs.writeFileSync('products.json', JSON.stringify(allBooks, null, 2))
-  await Book.insertMany(allBooks)
-  browser.close()
+    while (nextButton) {
+      const books = await page.evaluate(() => {
+        const bookElements = document.querySelectorAll('article.product_pod')
+        return Array.from(bookElements).map((book) => {
+          const title = book.querySelector('h3 a').getAttribute('title')
+          const price = book.querySelector('.price_color').textContent
+          const image =
+            'https://books.toscrape.com/' +
+            book.querySelector('img').getAttribute('src')
+          return { title, price, image }
+        })
+      })
+
+      nextButton = await page.$('li.next a')
+      if (nextButton) {
+        await nextButton.click()
+        await page.waitForNavigation()
+      }
+
+      allBooks.push(...books)
+    }
+
+    fs.writeFileSync('products.json', JSON.stringify(allBooks, null, 2))
+    await Book.insertMany(allBooks)
+  } catch (e) {
+    console.log(e)
+  } finally {
+    await mongoose.disconnect()
+    await browser.close()
+  }
 }
 
 scrape()
